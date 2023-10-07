@@ -20,7 +20,7 @@ def app():
         st.session_state["messages"] = [
             {
                 "role": "system",
-                "content": "Given a LinkedIn profile URL and a company, you should retrieve information about the person, the company and fill as many CRM fields as possible. Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous.",
+                "content": "Given a LinkedIn profile URL and a company, you should retrieve information about the person, the company and fill as many CRM fields as possible. After it, you should come with 1-liner ice breaker. Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous.",
             },
             {"role": "assistant", "content": intro},
         ]
