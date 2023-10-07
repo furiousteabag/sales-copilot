@@ -45,7 +45,7 @@ class Activity(BaseModel):
 
 class PersonProfile(BaseModel):
     name: str
-    position: str
+    position: Optional[str]
     current_company: CurrentCompany
     avatar: str
     about: Optional[str]
@@ -60,7 +60,7 @@ class PersonProfile(BaseModel):
 class CompanyProfile(BaseModel):
     url: str
     name: str
-    slogan: str
+    slogan: Optional[str]
     about: Optional[str]
     website: str
     Headquarters: Optional[str]

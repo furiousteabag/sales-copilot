@@ -133,13 +133,11 @@ def app():
                             or not company_url
                             or not company_slogan
                             or not company_city
-                            or not company_state
                             or not company_country
                             or not person_name
-                            or not person_title
                             or not person_url
                         ):
-                            st.error("LLM tried to create a lead without all required fields")
+                            st.error(f"LLM tried to create a lead without all required fields. Got: {func_args}")
                             st.stop()
                         lead = create_lead(
                             company_name=company_name,

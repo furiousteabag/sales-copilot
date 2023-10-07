@@ -94,11 +94,11 @@ def create_lead(
     company_url: str,
     company_slogan: str,
     company_city: str,
-    company_state: str,
     company_country: str,
     person_name: str,
-    person_title: str,
     person_url: str,
+    company_state: str = "",
+    person_title: str = "",
 ) -> Dict:
     auth = (os.environ["CLOSECRM_API_KEY"], "")
     payload = json.dumps(
@@ -136,7 +136,7 @@ def create_lead(
         logger.error(response.text)
         return None
 
-    return {"lead_url": response.json()["html_url"]}
+    return {"lead_url": response.json()["html_url"], "lead_id": response.json()["id"]}
 
 
 create_lead.openai_representation = {
@@ -187,10 +187,8 @@ create_lead.openai_representation = {
             "company_url",
             "company_slogan",
             "company_city",
-            "company_state",
             "company_country",
             "person_name",
-            "person_title",
             "person_url",
         ],
     },
