@@ -15,15 +15,15 @@ class CurrentCompany(BaseModel):
 
 
 class Experience(BaseModel):
-    title: str
-    subtitle: str
+    title: Optional[str]
+    subtitle: Optional[str]
     subtitleURL: Optional[str]
     location: Optional[str]
     description: Optional[str]
     duration: str
-    start_date: str
-    end_date: str
-    duration_short: str
+    start_date: Optional[str]
+    end_date: Optional[str]
+    duration_short: Optional[str]
 
 
 class Education(BaseModel):
