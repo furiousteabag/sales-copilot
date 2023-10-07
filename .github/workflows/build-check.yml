@@ -1,0 +1,27 @@
+name: Build check
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  docker:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Check envs in config
+      run: docker compose config
+    - name: Start containers
+      run: docker compose up -d --build
+    - name: Check logs after startup
+      run: docker compose logs app
+    - name: Stop containers
+      if: always()
+      run: docker compose down
