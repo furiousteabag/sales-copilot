@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from time import sleep
 from typing import Dict, List
 
@@ -7,7 +8,7 @@ import requests
 from loguru import logger
 
 from utils import CONFIG
-from utils.schemas import CompanyProfile, PersonProfile, ProfileType
+from utils.schemas_scrapingdog import CompanyProfile, PersonProfile, ProfileType
 
 
 def calculate(s: str) -> float:
@@ -16,7 +17,7 @@ def calculate(s: str) -> float:
 
 calculate.openai_representation = {
     "name": "calculate",
-    "description": "Calculate the result of a mathematical expression. Useful for calculating the total price of a shopping cart.",
+    "description": "Calculate the result of a mathematical expression.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -30,48 +31,76 @@ calculate.openai_representation = {
 }
 
 
+# def retrieve_profile(url: str, profile_type: ProfileType) -> PersonProfile | CompanyProfile:
+#     logger.info(f"Retrieving profile for {url}")
+
+#     scraper = "linkedinProfile" if profile_type == "person" else "linkedinCompanyProfile"
+#     apiEndPoint = "http://api.scraping-bot.io/scrape/data-scraper"
+#     apiEndPointResponse = "http://api.scraping-bot.io/scrape/data-scraper-response?"
+#     payload = json.dumps({"url": url, "scraper": scraper})
+#     headers = {"Content-Type": "application/json"}
+#     auth = (os.environ["SCRAPINGBOT_USERNAME"], os.environ["SCRAPINGBOT_API_KEY"])
+
+#     response = requests.request("POST", apiEndPoint, data=payload, auth=auth, headers=headers)
+#     if response.status_code != 200:
+#         logger.info(response.text)
+#         return None
+
+#     responseId = response.json()["responseId"]
+#     pending = True
+#     while pending:
+#         # sleep 5s between each loop, social-media scraping can take quite long to complete
+#         # so there is no point calling the api quickly as we will return an error if you do so
+#         sleep(5)
+#         finalResponse = requests.request(
+#             "GET", apiEndPointResponse + "scraper=" + scraper + "&responseId=" + responseId, auth=auth
+#         )
+#         result = finalResponse.json()
+#         if type(result) is list:
+#             pending = False
+#             # logger.info(result[0])
+#             profile = PersonProfile(**result[0]) if profile_type == "person" else CompanyProfile(**result[0])
+#         elif type(result) is dict:
+#             if "status" in result and result["status"] == "pending":
+#                 logger.info(result["message"] + " " + url)
+#                 continue
+#             elif result["error"] is not None:
+#                 pending = False
+#                 logger.error(json.dumps(result, indent=4))
+#     return profile
+
+
 def retrieve_profile(url: str, profile_type: ProfileType) -> PersonProfile | CompanyProfile:
     logger.info(f"Retrieving profile for {url}")
 
-    scraper = "linkedinProfile" if profile_type == "person" else "linkedinCompanyProfile"
-    apiEndPoint = "http://api.scraping-bot.io/scrape/data-scraper"
-    apiEndPointResponse = "http://api.scraping-bot.io/scrape/data-scraper-response?"
-    payload = json.dumps({"url": url, "scraper": scraper})
-    headers = {"Content-Type": "application/json"}
-    auth = (os.environ["SCRAPINGBOT_USERNAME"], os.environ["SCRAPINGBOT_API_KEY"])
+    pattern = r"linkedin\.com/(?:in|company)/([^/?]+)"
+    match = re.search(pattern, url)
+    if match is None:
+        logger.error(f"Invalid LinkedIn url: {url}")
+        return None
 
-    response = requests.request("POST", apiEndPoint, data=payload, auth=auth, headers=headers)
+    linkedin_id = match.group(1)
+
+    payload = {
+        "api_key": os.environ["SCRAPINGDOG_API_KEY"],
+        "type": profile_type,
+        "linkId": linkedin_id,
+        "private": True,
+    }
+    response = requests.get("https://api.scrapingdog.com/linkedin", params=payload)
     if response.status_code != 200:
         logger.info(response.text)
         return None
-
-    responseId = response.json()["responseId"]
-    pending = True
-    while pending:
-        # sleep 5s between each loop, social-media scraping can take quite long to complete
-        # so there is no point calling the api quickly as we will return an error if you do so
-        sleep(5)
-        finalResponse = requests.request(
-            "GET", apiEndPointResponse + "scraper=" + scraper + "&responseId=" + responseId, auth=auth
-        )
-        result = finalResponse.json()
-        if type(result) is list:
-            pending = False
-            # logger.info(result[0])
-            profile = PersonProfile(**result[0]) if profile_type == "person" else CompanyProfile(**result[0])
-        elif type(result) is dict:
-            if "status" in result and result["status"] == "pending":
-                logger.info(result["message"] + " " + url)
-                continue
-            elif result["error"] is not None:
-                pending = False
-                logger.error(json.dumps(result, indent=4))
-    return profile
+    return (
+        PersonProfile(**response.json()[0])
+        if profile_type == ProfileType.profile
+        else CompanyProfile(**response.json()[0])
+    )
 
 
 retrieve_profile.openai_representation = {
     "name": "retrieve_profile",
-    "description": "Retrieve a profile from LinkedIn.",
+    "description": "Retrieve a person/company profile from LinkedIn.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -81,7 +110,7 @@ retrieve_profile.openai_representation = {
             },
             "profile_type": {
                 "type": "string",
-                "enum": ["person", "company"],
+                "enum": [v.value for v in ProfileType],
             },
         },
         "required": ["url", "profile_type"],
@@ -151,11 +180,11 @@ create_lead.openai_representation = {
             },
             "company_url": {
                 "type": "string",
-                "description": "The url of the company.",
+                "description": "The url of the company. DO NOT use the LinkedIn url, use the company website url instead.",
             },
             "company_slogan": {
                 "type": "string",
-                "description": "The slogan of the company.",
+                "description": "The slogan of the company. If there is no slogan, summarize the company in a few words.",
             },
             "company_city": {
                 "type": "string",
