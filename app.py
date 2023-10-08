@@ -1,4 +1,5 @@
 import json
+from pprint import pformat, pprint
 
 import openai
 import streamlit as st
@@ -12,18 +13,56 @@ def app():
     st.set_page_config(page_title="Sales Copilot", page_icon="🤝")
     st.title("🤝 Sales Copilot")
     """
-    Extract information from LinkedIn profile, insert it into a Close CRM and recieve a 1-liner icebreaker
+    Extract information from LinkedIn profile, insert it into a Close CRM and recieve a message to send to the person.
     """
+    user_name = st.sidebar.text_input("Your name:", value="Alex")
+    user_title = st.sidebar.text_input("Title:", value="Co-Founder & CEO")
+    user_company = st.sidebar.text_input("Enter your company:", value="AskGuru")
+    user_company_description = st.sidebar.text_area(
+        "Company description:",
+        value="AskGuru is a sales assistant that helps you with filling out your CRM, finding information about your leads, and writing personalized cold emails.",
+        height=100,
+    )
+    # short_message_example = st.sidebar.text_area(
+    #     "Enter short message example 👇",
+    #     value="Hi Wisnu, I'm Alex from AskGuru. We've crafted a copilot for support agents, streamlining instant reply suggestions. Your work at Kata.ai, especially in Conversational AI, truly stands out. Could we have a ~20-minute chat to discuss your perspective on tech and management?",
+    #     height=230,
+    # )
+    # long_message_example = st.sidebar.text_area(
+    #     "Enter long message example 👇",
+    #     value="Hi Irzan, I'm Alex!\n\nI’ve recently developed a tool aimed at enhancing support agent efficiency by providing them with quick, relevant replies. Your vision and commitment to making people's lives easier through technology, especially with the impressive work you've done at Kata.ai, resonates deeply with me. I genuinely believe that the fusion of technology and human touch can make a huge difference.\n\nI'm keen to understand and gain insights from your journey as the CEO and Co-Founder of Kata.ai, especially in the Conversational AI landscape. I’m sure your perspective on the future of tech, and how brands can deeply connect with their audience, would be invaluable to our development.\n\nWould you be open to a ~20-minute chat to dive deeper into this?",
+    #     height=500,
+    # )
+
+    if not user_name or not user_title or not user_company or not user_company_description:
+        st.warning("Please fill out your name, title, company and company description.")
+        return
     if "messages" not in st.session_state:
-        intro = "👋 Hi! I'm a sales assistant. I can help you with filling out your CRM, finding information about your leads, and writing icebreakers."
-        intro += "\nYou might begin with inserting a LinkedIn profile URL along with company which you are interested in, and I'll try to extract information from it."
+        intro = "👋 Hi! I'm a sales assistant. Here is a list of things I can do for you:\n"
+        intro += "\n".join([f"- {f['description']}" for f in openai_functions])
+        # intro += "\n\nYou might begin with inserting a LinkedIn profile URL along with company which you are interested in, and I'll try to extract information from it."
+        intro += "\n\nYou may begin with something like:\n```\nretrieve necessary info and create lead for https://www.linkedin.com/in/chrislohy/ for neocortex\n```\n"
+        intro += "And follow up with:\n```\nwrite a personalized LinkedIn connect note\n```\n"
         st.session_state["messages"] = [
             {
                 "role": "system",
-                "content": "Given a LinkedIn profile URL and a company, you should retrieve information about the person, the company and fill as many CRM fields as possible. After it, you should come with 1-liner ice breaker. Don't make assumptions about what values to plug into functions. Ask for clarification if a user request is ambiguous.",
+                # "content": "Ask for clarification if a user request is ambiguous. Given a LinkedIn profile URL and a company, you should retrieve information about the person, the company and fill as many CRM fields as possible. After it, you should come with a long or short personalized cold message. Don't make assumptions about what values to plug into functions.",
+                "content": "Ask for clarification if a user request is ambiguous. Don't make assumptions about what values to plug into functions. Execute functions if you can extract necessary values. Before creating company profile make sure you have made a separate request to retrieve company info.",
             },
             {"role": "assistant", "content": intro},
         ]
+
+    # example_messages = ""
+    # if short_message_example:
+    #     example_messages += f"Short message example:\n```\n{short_message_example}\n```\n\n"
+    # if long_message_example:
+    #     example_messages += f"Long message example:\n```\n{long_message_example}\n```"
+
+    # if st.session_state.messages[1]["content"] != example_messages:
+    #     if "message example" in st.session_state.messages[1]["content"]:
+    #         st.session_state.messages[1]["content"] = example_messages
+    #     else:
+    #         st.session_state.messages.insert(1, {"role": "user", "content": example_messages})
 
     for msg in st.session_state.messages[1:]:
         with st.chat_message(msg["role"]):
@@ -64,19 +103,60 @@ def app():
                         ]
                     )
 
-                msg_history = [
-                    {
-                        "role": msg["role"],
-                        "content": (
-                            f"I executed function to retrieve the result: {msg['fn_calls']}\n"
-                            if "fn_calls" in msg
-                            else ""
-                        )
-                        + msg["content"],
-                    }
-                    for msg in st.session_state.messages
-                ]
+                # msg_history = [
+                #     {
+                #         "role": msg["role"],
+                #         "content": (
+                #             f"I executed function to retrieve the result: {msg['fn_calls']}\n"
+                #             if "fn_calls" in msg
+                #             else ""
+                #         )
+                #         + msg["content"],
+                #     }
+                #     for msg in st.session_state.messages
+                # ]
+                # msg_history = [
+                #     item
+                #     for msg in st.session_state.messages
+                #     for item in [
+                #         {
+                #             "role": msg["role"],
+                #             "content": f"I executed function to retrieve the result: {msg['fn_calls']}\n"
+                #             if "fn_calls" in msg
+                #             else None,
+                #         },
+                #         {"role": msg["role"], "content": msg["content"]},
+                #     ]
+                #     if item["content"]
+                # ]
+                msg_history, fn_calls_prefix = [], ""
+                for msg in st.session_state.messages:
+                    msg_history.append(
+                        {
+                            "role": msg["role"],
+                            "content": msg["content"],
+                        }
+                    )
+                    if msg["role"] == "user":
+                        last_user_msg_idx = len(msg_history) - 1
+                    fn_calls_prefix += (
+                        ("\n".join([f"{fn['name']}: {fn['results']}" for fn in msg["fn_calls"]]) + "\n")
+                        if "fn_calls" in msg
+                        else ""
+                    )
 
+                if fn_calls_prefix:
+                    msg_history[last_user_msg_idx]["content"] = (
+                        f"Use the following information withing your answer from previous function calls if you will find it useful:\n```\n{fn_calls_prefix}```\n\n"
+                        + msg_history[last_user_msg_idx]["content"]
+                    )
+
+                msg_history[last_user_msg_idx]["content"] = (
+                    f"If required: here is a data about me (e.g. for crafting personalized messages):\n```\nname: {user_name}\ntitle: {user_title}\ncompany: {user_company}\ncompany description: {user_company_description}\n```\n\n"
+                    + msg_history[last_user_msg_idx]["content"]
+                )
+
+                logger.info(f"msg_history: {pformat(msg_history + openai_funcs)}")
                 # Use deltas to stream back response
                 for delta in openai.ChatCompletion.create(
                     model=CONFIG["ml"]["completions_model"],
