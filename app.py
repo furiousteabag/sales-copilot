@@ -20,7 +20,7 @@ def app():
     user_company = st.sidebar.text_input("Enter your company:", value="AskGuru")
     user_company_description = st.sidebar.text_area(
         "Company description:",
-        value="AskGuru is a sales assistant that helps you with filling out your CRM, finding information about your leads, and writing personalized cold emails.",
+        value="AskGuru is a human-supervised conversational AI in the form of a chatbot to generate leads for website owners because unengaging, slow, and irrelevant chatbot replies reduce # of visitors making the CTA by up to 50%.",
         height=100,
     )
     # short_message_example = st.sidebar.text_area(
@@ -42,7 +42,7 @@ def app():
         intro += "\n".join([f"- {f['description']}" for f in openai_functions])
         # intro += "\n\nYou might begin with inserting a LinkedIn profile URL along with company which you are interested in, and I'll try to extract information from it."
         intro += "\n\nYou may begin with something like:\n```\nretrieve necessary info and create lead for https://www.linkedin.com/in/chrislohy/ for neocortex\n```\n"
-        intro += "And follow up with:\n```\nwrite a personalized LinkedIn connect note\n```\n"
+        intro += "And follow up with:\n```\nwrite a personalized LinkedIn InMail\n```\n"
         st.session_state["messages"] = [
             {
                 "role": "system",
